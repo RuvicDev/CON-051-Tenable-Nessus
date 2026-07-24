@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title data-i18n="doc_title">Conector Tenable / Nessus — Ruvic</title>
+  <link rel="stylesheet" href="assets/ruvic.css">
+</head>
+<body class="guide">
+  <main class="ruvic-container">
+
+    <nav class="ruvic-toc" aria-label="Índice">
+      <h2 data-i18n="toc_title">Contenido</h2>
+      <ol>
+        <li><a href="#que-es" data-i18n="toc.que_es">¿Qué es y para qué sirve?</a></li>
+        <li><a href="#prerrequisitos" data-i18n="toc.prerrequisitos">Prerrequisitos</a></li>
+        <li><a href="#configuracion-fabricante" data-i18n="toc.configuracion_fabricante">Configuración en el fabricante</a></li>
+        <li><a href="#permisos" data-i18n="toc.permisos">Permisos requeridos</a></li>
+        <li><a href="#configuracion-ruvic" data-i18n="toc.configuracion_ruvic">Configuración en Ruvic</a></li>
+        <li><a href="#verificacion" data-i18n="toc.verificacion">Verificación</a></li>
+        <li><a href="#solucion-problemas" data-i18n="toc.solucion_problemas">Solución de problemas</a></li>
+        <li><a href="#faq-seguridad" data-i18n="toc.faq_seguridad">Preguntas frecuentes y notas de seguridad</a></li>
+      </ol>
+    </nav>
+
+    <h1 data-i18n="guide_title">Tenable / Nessus</h1>
+    <p class="guide-updated">{{ULTIMA_ACTUALIZACION}}</p>
+
+    <!-- ============ 1. QUÉ ES ============ -->
+    <section>
+      <h2 id="que-es" data-i18n="section.que_es">¿Qué es y para qué sirve?</h2>
+      <p data-i18n="que_es.body">El conector Tenable / Nessus permite que el agente de Ruvic consulte, en modo <strong>solo lectura</strong>, las vulnerabilidades detectadas por Tenable.io (Vulnerability Management). Una vez configurado, puedes pedirle al agente cosas como:</p>
+      <ul>
+        <li data-i18n="que_es.ej1">"Lista las vulnerabilidades detectadas en el activo a1b2c3d4-5678-90ab-cdef-1234567890ab."</li>
+        <li data-i18n="que_es.ej2">"¿En qué estado está el escaneo 123? Muéstrame un resumen."</li>
+        <li data-i18n="que_es.ej3">"Exporta los resultados del escaneo 123 en formato CSV."</li>
+      </ul>
+      <p data-i18n="que_es.ops">Operaciones soportadas:</p>
+      <table>
+        <thead>
+          <tr>
+            <th data-i18n="table.operacion">Operación</th>
+            <th data-i18n="table.que_hace">Qué hace</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>security.list_vulnerabilities_by_asset</code></td>
+            <td data-i18n="ops.list">Lista las vulnerabilidades detectadas en un activo (agrega los hallazgos de todos los escaneos recientes sobre ese activo)</td>
+          </tr>
+          <tr>
+            <td><code>security.get_scan</code></td>
+            <td data-i18n="ops.get_scan">Consulta el estado y resumen de un escaneo (targets, inicio/fin, hosts)</td>
+          </tr>
+          <tr>
+            <td><code>security.export_scan_results</code></td>
+            <td data-i18n="ops.export">Exporta y descarga los resultados de un escaneo completado (csv, nessus, html o pdf)</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="callout callout-info">
+        <span class="callout-title" data-i18n="que_es.callout.title">Solo lectura, por diseño</span>
+        <span data-i18n="que_es.callout.body">El conector no lanza, pausa, cancela ni elimina escaneos, y no modifica la configuración de la cuenta. Solo consulta datos ya generados y exporta resultados existentes.</span>
+      </div>
+    </section>
+
+    <!-- ============ 2. PRERREQUISITOS ============ -->
+    <section>
+      <h2 id="prerrequisitos" data-i18n="section.prerrequisitos">Prerrequisitos</h2>
+      <ul>
+        <li data-i18n="prer.cuenta">Una cuenta de <strong>Tenable.io</strong> (Vulnerability Management en la nube) o una instancia autoalojada compatible con la API de Tenable.</li>
+        <li data-i18n="prer.admin">Acceso a <strong>Settings → My Account → API Keys</strong> en Tenable.io para generar un par de API Keys, solo durante la configuración inicial.</li>
+        <li data-i18n="prer.datos">Al menos un activo o escaneo ya existente en la cuenta para poder probar la consulta (un <code>asset_id</code> o <code>scan_id</code> reales).</li>
+      </ul>
+    </section>
+
+    <!-- ============ 3. CONFIGURACIÓN EN EL FABRICANTE ============ -->
+    <section>
+      <h2 id="configuracion-fabricante" data-i18n="section.configuracion_fabricante">Configuración en el fabricante</h2>
+      <p data-i18n="fab.intro">Vas a generar un <strong>par de API Keys dedicado</strong> para Ruvic, asociado a un usuario con rol de solo lectura. No reutilices las API Keys de tu cuenta de administrador ni las de otra integración.</p>
+      <ol class="ruvic-steps">
+        <li>
+          <strong data-i18n="fab.p1.t">Crea (o usa) un usuario con rol de solo lectura.</strong>
+          <p data-i18n="fab.p1.b">En Tenable.io, ve a <strong>Settings → Access Control → Users</strong> y crea un usuario con rol <strong>Basic</strong> o <strong>Standard</strong> (no Administrator). Si necesitas limitar qué activos/escaneos puede ver, asígnale los <strong>Access Groups</strong> correspondientes.</p>
+        </li>
+        <li>
+          <strong data-i18n="fab.p2.t">Genera el par de API Keys.</strong>
+          <p data-i18n="fab.p2.b">Con ese usuario autenticado (o como administrador, sobre esa cuenta), entra a <strong>Settings → My Account → API Keys</strong> y pulsa <strong>Generate</strong>. Tenable muestra el <em>Access Key</em> y el <em>Secret Key</em> una única vez — cópialos de inmediato, los usarás en el formulario de Ruvic.</p>
+          <div class="callout callout-warning">
+            <span class="callout-title" data-i18n="fab.p2.note.title">Importante</span>
+            <span data-i18n="fab.p2.note.body">El Secret Key no se puede volver a consultar. Si lo pierdes, deberás regenerar el par completo (esto invalida el anterior).</span>
+          </div>
+          <div class="screenshot-placeholder" data-i18n="fab.p2.img">[ Captura: generación de API Keys en Settings → My Account → API Keys — reemplazar por assets/img/tenable-api-keys.png ]</div>
+        </li>
+        <li>
+          <strong data-i18n="fab.p3.t">(Opcional) Restringe la visibilidad con Access Groups.</strong>
+          <p data-i18n="fab.p3.b">Si quieres que el conector solo vea ciertos activos o escaneos, en <strong>Settings → Access Control → Access Groups</strong> crea un grupo con los activos relevantes y asígnalo al usuario del paso 1.</p>
+        </li>
+        <li>
+          <strong data-i18n="fab.p4.t">Verifica las credenciales desde la línea de comandos.</strong>
+          <p data-i18n="fab.p4.b">Con curl, confirmando que la sesión responde:</p>
+<pre><code>curl -s -H "X-ApiKeys: accessKey=TU_ACCESS_KEY;secretKey=TU_SECRET_KEY" \
+  https://cloud.tenable.com/session</code></pre>
+          <p data-i18n="fab.p4.result">Si responde con un JSON de la sesión (sin error de autenticación), el fabricante quedó listo. Anota estos valores para la siguiente sección: Access Key y Secret Key.</p>
+        </li>
+      </ol>
+    </section>
+
+    <!-- ============ 4. PERMISOS ============ -->
+    <section>
+      <h2 id="permisos" data-i18n="section.permisos">Permisos requeridos</h2>
+      <p data-i18n="perm.intro">Principio de mínimo privilegio: el usuario dueño de las API Keys solo necesita un rol de solo lectura. No otorgues el rol <strong>Administrator</strong> ni permisos para crear, modificar, lanzar o eliminar escaneos.</p>
+      <table>
+        <thead>
+          <tr>
+            <th data-i18n="table.permiso">Permiso</th>
+            <th data-i18n="table.para_que">Para qué sirve</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td data-i18n="perm.basic.title">Rol de usuario <strong>Basic</strong> o <strong>Standard</strong></td>
+            <td data-i18n="perm.basic.body">Permite autenticarse en la API y consultar sesión, activos y escaneos visibles para ese usuario (<code>security.list_vulnerabilities_by_asset</code>, <code>security.get_scan</code>, <code>security.export_scan_results</code>)</td>
+          </tr>
+          <tr>
+            <td data-i18n="perm.groups.title">Acceso a los <strong>Access Groups</strong> relevantes</td>
+            <td data-i18n="perm.groups.body">Limita qué activos y escaneos puede ver el conector, sin necesidad de un rol más amplio</td>
+          </tr>
+        </tbody>
+      </table>
+      <p data-i18n="perm.note">No se requiere el rol <strong>Administrator</strong> ni permisos de escritura: el conector nunca crea, modifica, lanza ni elimina escaneos.</p>
+    </section>
+
+    <!-- ============ 5. CONFIGURACIÓN EN RUVIC ============ -->
+    <section>
+      <h2 id="configuracion-ruvic" data-i18n="section.configuracion_ruvic">Configuración en Ruvic</h2>
+      <p data-i18n="ruvic.intro">Entra a <strong>Settings → Conectores</strong>, busca la tarjeta <strong>Tenable / Nessus</strong> y pulsa <strong>Configurar</strong>. Diligencia el formulario con los valores que obtuviste en la sección anterior:</p>
+      <table>
+        <thead>
+          <tr>
+            <th data-i18n="table.campo">Campo del formulario</th>
+            <th data-i18n="table.valor">Valor</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td data-i18n="ruvic.f.base_url">URL base</td>
+            <td data-i18n="ruvic.v.base_url">Opcional; por defecto <code>https://cloud.tenable.com</code>. Usa la URL de tu instancia si es autoalojada</td>
+          </tr>
+          <tr>
+            <td data-i18n="ruvic.f.access_key">Access Key</td>
+            <td data-i18n="ruvic.v.access_key">El Access Key generado en el paso 2 de la sección 3</td>
+          </tr>
+          <tr>
+            <td data-i18n="ruvic.f.secret_key">Secret Key</td>
+            <td data-i18n="ruvic.v.secret_key">El Secret Key del mismo par. Se guarda cifrado como secreto: la interfaz no volverá a mostrarlo</td>
+          </tr>
+          <tr>
+            <td data-i18n="ruvic.f.timeout">Timeout de conexión</td>
+            <td data-i18n="ruvic.v.timeout">Opcional; <code>15</code> segundos por defecto</td>
+          </tr>
+        </tbody>
+      </table>
+      <p data-i18n="ruvic.save">Guarda y pulsa <span class="ruvic-button">Probar conexión</span> — la plataforma consultará la sesión actual en Tenable y confirmará que las credenciales funcionan.</p>
+      <div class="screenshot-placeholder" data-i18n="ruvic.img">[ Captura: formulario del conector Tenable / Nessus en Settings → Conectores — reemplazar por assets/img/tenable-form.png ]</div>
+    </section>
+
+    <!-- ============ 6. VERIFICACIÓN ============ -->
+    <section>
+      <h2 id="verificacion" data-i18n="section.verificacion">Verificación</h2>
+      <ol class="ruvic-steps">
+        <li>
+          <strong data-i18n="ver.p1.t">Test de conexión exitoso.</strong>
+          <p data-i18n="ver.p1.b">El botón <em>Probar conexión</em> debe responder: <em>"Conexión exitosa a Tenable (https://cloud.tenable.com)"</em>. La tarjeta del conector cambia a estado <strong>Configurado</strong>.</p>
+        </li>
+        <li>
+          <strong data-i18n="ver.p2.t">Automatización mínima de prueba.</strong>
+          <p data-i18n="ver.p2.b">Abre una conversación nueva con el agente y pídele: <em>"Lista las vulnerabilidades detectadas en el activo &lt;asset_id&gt;."</em> (usa un <code>asset_id</code> real de tu cuenta). El agente debe responder con la lista real de vulnerabilidades (plugin, severidad, cantidad). Si lo hace, el conector quedó operativo de punta a punta.</p>
+        </li>
+      </ol>
+    </section>
+
+    <!-- ============ 7. SOLUCIÓN DE PROBLEMAS ============ -->
+    <section>
+      <h2 id="solucion-problemas" data-i18n="section.solucion_problemas">Solución de problemas</h2>
+      <table>
+        <thead>
+          <tr>
+            <th data-i18n="table.sintoma">Mensaje / síntoma</th>
+            <th data-i18n="table.causa">Causa probable y solución</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td data-i18n="prob.s1">"Autenticación fallida: Credenciales inválidas o sin permiso suficiente para esta operación."</td>
+            <td data-i18n="prob.c1">El Access Key o el Secret Key están mal copiados, o el par fue revocado. Reintenta el paso 2 de la sección 3, genera un par nuevo si hace falta y vuelve a guardar el formulario.</td>
+          </tr>
+          <tr>
+            <td data-i18n="prob.s2">"Error de red: No se pudo alcanzar Tenable en '...'"</td>
+            <td data-i18n="prob.c2">Timeout o problema de red hacia Tenable. Verifica que la URL base sea correcta (sin ruta ni barra final), que no haya un firewall bloqueando la salida, y considera aumentar el timeout de conexión.</td>
+          </tr>
+          <tr>
+            <td data-i18n="prob.s3">"El activo/escaneo solicitado no existe."</td>
+            <td data-i18n="prob.c3"><code>asset_id</code> o <code>scan_id</code> mal escrito, o el usuario de las API Keys no tiene visibilidad sobre ese activo/escaneo por sus Access Groups. Verifica el identificador y los grupos de acceso del paso 3 de la sección 3.</td>
+          </tr>
+          <tr>
+            <td data-i18n="prob.s4">La exportación del escaneo no termina ("no terminó en 60s")</td>
+            <td data-i18n="prob.c4">Tenable tarda en preparar archivos de exportación grandes; el conector espera hasta 60 segundos. Reintenta más tarde o exporta un escaneo con menos hallazgos. Verifica primero con <code>get_scan</code> que el estado sea <code>completed</code>.</td>
+          </tr>
+          <tr>
+            <td data-i18n="prob.s5">El conector aparece "Sin configurar" tras guardar</td>
+            <td data-i18n="prob.c5">Falta el Access Key o el Secret Key (son obligatorios). Ábrelo de nuevo y completa ambos campos; la URL base y el timeout son opcionales.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ============ 8. FAQ Y SEGURIDAD ============ -->
+    <section>
+      <h2 id="faq-seguridad" data-i18n="section.faq_seguridad">Preguntas frecuentes y notas de seguridad</h2>
+
+      <h3 data-i18n="faq.q1">¿El agente puede lanzar, pausar o eliminar escaneos?</h3>
+      <p data-i18n="faq.a1">No. La librería del conector es de solo lectura: solo expone <code>list_vulnerabilities_by_asset</code>, <code>get_scan</code> y <code>export_scan_results</code>. No existe ninguna operación para crear, modificar, lanzar, pausar ni eliminar escaneos, aunque el usuario de las API Keys tuviera permisos para ello.</p>
+
+      <h3 data-i18n="faq.q2">¿Dónde queda guardado el Secret Key?</h3>
+      <p data-i18n="faq.a2">Como secreto en el almacén de credenciales de la plataforma, asociado a tu usuario. La interfaz nunca vuelve a mostrarlo; solo indica "definido". Para cambiarlo, escribe uno nuevo en el formulario; para conservarlo al editar otros campos, deja el campo vacío.</p>
+
+      <h3 data-i18n="faq.q3">Rotación de credenciales</h3>
+      <p data-i18n="faq.a3">Recomendado cada 90 días o según tu política: genera un par nuevo de API Keys en Settings → My Account → API Keys, actualízalo en el formulario del conector, pulsa <em>Probar conexión</em> y luego revoca el par anterior desde Tenable.</p>
+
+      <h3 data-i18n="faq.q4">¿Qué hago si las API Keys se comprometen?</h3>
+      <ol>
+        <li data-i18n="faq.a4.li1">Revoca el par de API Keys de inmediato en Tenable.io: Settings → My Account → API Keys → Revoke.</li>
+        <li data-i18n="faq.a4.li2">Revisa los logs de auditoría de la cuenta Tenable para detectar actividad reciente asociada a ese usuario.</li>
+        <li data-i18n="faq.a4.li3">Genera un par nuevo y actualízalo en el formulario del conector.</li>
+      </ol>
+
+      <h3 data-i18n="faq.q5">¿Expiran las API Keys?</h3>
+      <p data-i18n="faq.a5">Por defecto no (las API Keys de Tenable no caducan solas). Si tu política exige expiración o rotación forzosa, gestiona un calendario de rotación manual como el descrito arriba.</p>
+
+      <div class="callout callout-warning">
+        <span class="callout-title" data-i18n="faq.bp.title">Buenas prácticas</span>
+        <span data-i18n="faq.bp.body">Usa siempre un par de API Keys dedicado y de solo lectura (rol Basic o Standard, nunca Administrator); restringe la visibilidad con Access Groups al mínimo necesario; y evita compartir el Secret Key por canales no seguros.</span>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const I18N = {
+      es: {
+        doc_title: "Conector Tenable / Nessus — Ruvic",
+        toc_title: "Contenido",
+        "toc.que_es": "¿Qué es y para qué sirve?",
+        "toc.prerrequisitos": "Prerrequisitos",
+        "toc.configuracion_fabricante": "Configuración en el fabricante",
+        "toc.permisos": "Permisos requeridos",
+        "toc.configuracion_ruvic": "Configuración en Ruvic",
+        "toc.verificacion": "Verificación",
+        "toc.solucion_problemas": "Solución de problemas",
+        "toc.faq_seguridad": "Preguntas frecuentes y notas de seguridad",
+        guide_title: "Tenable / Nessus",
+        "section.que_es": "¿Qué es y para qué sirve?",
+        "que_es.body": "El conector Tenable / Nessus permite que el agente de Ruvic consulte, en modo solo lectura, las vulnerabilidades detectadas por Tenable.io (Vulnerability Management). Una vez configurado, puedes pedirle al agente cosas como:",
+        "que_es.ej1": "\"Lista las vulnerabilidades detectadas en el activo a1b2c3d4-5678-90ab-cdef-1234567890ab.\"",
+        "que_es.ej2": "\"¿En qué estado está el escaneo 123? Muéstrame un resumen.\"",
+        "que_es.ej3": "\"Exporta los resultados del escaneo 123 en formato CSV.\"",
+        "que_es.ops": "Operaciones soportadas:",
+        "table.operacion": "Operación",
+        "table.que_hace": "Qué hace",
+        "ops.list": "Lista las vulnerabilidades detectadas en un activo (agrega los hallazgos de todos los escaneos recientes sobre ese activo)",
+        "ops.get_scan": "Consulta el estado y resumen de un escaneo (targets, inicio/fin, hosts)",
+        "ops.export": "Exporta y descarga los resultados de un escaneo completado (csv, nessus, html o pdf)",
+        "que_es.callout.title": "Solo lectura, por diseño",
+        "que_es.callout.body": "El conector no lanza, pausa, cancela ni elimina escaneos, y no modifica la configuración de la cuenta. Solo consulta datos ya generados y exporta resultados existentes.",
+        "section.prerrequisitos": "Prerrequisitos",
+        "prer.cuenta": "Una cuenta de Tenable.io (Vulnerability Management en la nube) o una instancia autoalojada compatible con la API de Tenable.",
+        "prer.admin": "Acceso a Settings → My Account → API Keys en Tenable.io para generar un par de API Keys, solo durante la configuración inicial.",
+        "prer.datos": "Al menos un activo o escaneo ya existente en la cuenta para poder probar la consulta (un asset_id o scan_id reales).",
+        "section.configuracion_fabricante": "Configuración en el fabricante",
+        "fab.intro": "Vas a generar un par de API Keys dedicado para Ruvic, asociado a un usuario con rol de solo lectura. No reutilices las API Keys de tu cuenta de administrador ni las de otra integración.",
+        "fab.p1.t": "Crea (o usa) un usuario con rol de solo lectura.",
+        "fab.p1.b": "En Tenable.io, ve a Settings → Access Control → Users y crea un usuario con rol Basic o Standard (no Administrator). Si necesitas limitar qué activos/escaneos puede ver, asígnale los Access Groups correspondientes.",
+        "fab.p2.t": "Genera el par de API Keys.",
+        "fab.p2.b": "Con ese usuario autenticado (o como administrador, sobre esa cuenta), entra a Settings → My Account → API Keys y pulsa Generate. Tenable muestra el Access Key y el Secret Key una única vez — cópialos de inmediato, los usarás en el formulario de Ruvic.",
+        "fab.p2.note.title": "Importante",
+        "fab.p2.note.body": "El Secret Key no se puede volver a consultar. Si lo pierdes, deberás regenerar el par completo (esto invalida el anterior).",
+        "fab.p2.img": "[ Captura: generación de API Keys en Settings → My Account → API Keys — reemplazar por assets/img/tenable-api-keys.png ]",
+        "fab.p3.t": "(Opcional) Restringe la visibilidad con Access Groups.",
+        "fab.p3.b": "Si quieres que el conector solo vea ciertos activos o escaneos, en Settings → Access Control → Access Groups crea un grupo con los activos relevantes y asígnalo al usuario del paso 1.",
+        "fab.p4.t": "Verifica las credenciales desde la línea de comandos.",
+        "fab.p4.b": "Con curl, confirmando que la sesión responde:",
+        "fab.p4.result": "Si responde con un JSON de la sesión (sin error de autenticación), el fabricante quedó listo. Anota estos valores para la siguiente sección: Access Key y Secret Key.",
+        "section.permisos": "Permisos requeridos",
+        "perm.intro": "Principio de mínimo privilegio: el usuario dueño de las API Keys solo necesita un rol de solo lectura. No otorgues el rol Administrator ni permisos para crear, modificar, lanzar o eliminar escaneos.",
+        "table.permiso": "Permiso",
+        "table.para_que": "Para qué sirve",
+        "perm.basic.title": "Rol de usuario Basic o Standard",
+        "perm.basic.body": "Permite autenticarse en la API y consultar sesión, activos y escaneos visibles para ese usuario (security.list_vulnerabilities_by_asset, security.get_scan, security.export_scan_results)",
+        "perm.groups.title": "Acceso a los Access Groups relevantes",
+        "perm.groups.body": "Limita qué activos y escaneos puede ver el conector, sin necesidad de un rol más amplio",
+        "perm.note": "No se requiere el rol Administrator ni permisos de escritura: el conector nunca crea, modifica, lanza ni elimina escaneos.",
+        "section.configuracion_ruvic": "Configuración en Ruvic",
+        "ruvic.intro": "Entra a Settings → Conectores, busca la tarjeta Tenable / Nessus y pulsa Configurar. Diligencia el formulario con los valores que obtuviste en la sección anterior:",
+        "table.campo": "Campo del formulario",
+        "table.valor": "Valor",
+        "ruvic.f.base_url": "URL base",
+        "ruvic.v.base_url": "Opcional; por defecto https://cloud.tenable.com. Usa la URL de tu instancia si es autoalojada",
+        "ruvic.f.access_key": "Access Key",
+        "ruvic.v.access_key": "El Access Key generado en el paso 2 de la sección 3",
+        "ruvic.f.secret_key": "Secret Key",
+        "ruvic.v.secret_key": "El Secret Key del mismo par. Se guarda cifrado como secreto: la interfaz no volverá a mostrarlo",
+        "ruvic.f.timeout": "Timeout de conexión",
+        "ruvic.v.timeout": "Opcional; 15 segundos por defecto",
+        "ruvic.save": "Guarda y pulsa Probar conexión — la plataforma consultará la sesión actual en Tenable y confirmará que las credenciales funcionan.",
+        "ruvic.img": "[ Captura: formulario del conector Tenable / Nessus en Settings → Conectores — reemplazar por assets/img/tenable-form.png ]",
+        "section.verificacion": "Verificación",
+        "ver.p1.t": "Test de conexión exitoso.",
+        "ver.p1.b": "El botón Probar conexión debe responder: \"Conexión exitosa a Tenable (https://cloud.tenable.com)\". La tarjeta del conector cambia a estado Configurado.",
+        "ver.p2.t": "Automatización mínima de prueba.",
+        "ver.p2.b": "Abre una conversación nueva con el agente y pídele: \"Lista las vulnerabilidades detectadas en el activo <asset_id>.\" (usa un asset_id real de tu cuenta). El agente debe responder con la lista real de vulnerabilidades (plugin, severidad, cantidad). Si lo hace, el conector quedó operativo de punta a punta.",
+        "section.solucion_problemas": "Solución de problemas",
+        "table.sintoma": "Mensaje / síntoma",
+        "table.causa": "Causa probable y solución",
+        "prob.s1": "\"Autenticación fallida: Credenciales inválidas o sin permiso suficiente para esta operación.\"",
+        "prob.c1": "El Access Key o el Secret Key están mal copiados, o el par fue revocado. Reintenta el paso 2 de la sección 3, genera un par nuevo si hace falta y vuelve a guardar el formulario.",
+        "prob.s2": "\"Error de red: No se pudo alcanzar Tenable en '...'\"",
+        "prob.c2": "Timeout o problema de red hacia Tenable. Verifica que la URL base sea correcta (sin ruta ni barra final), que no haya un firewall bloqueando la salida, y considera aumentar el timeout de conexión.",
+        "prob.s3": "\"El activo/escaneo solicitado no existe.\"",
+        "prob.c3": "asset_id o scan_id mal escrito, o el usuario de las API Keys no tiene visibilidad sobre ese activo/escaneo por sus Access Groups. Verifica el identificador y los grupos de acceso del paso 3 de la sección 3.",
+        "prob.s4": "La exportación del escaneo no termina (\"no terminó en 60s\")",
+        "prob.c4": "Tenable tarda en preparar archivos de exportación grandes; el conector espera hasta 60 segundos. Reintenta más tarde o exporta un escaneo con menos hallazgos. Verifica primero con get_scan que el estado sea completed.",
+        "prob.s5": "El conector aparece \"Sin configurar\" tras guardar",
+        "prob.c5": "Falta el Access Key o el Secret Key (son obligatorios). Ábrelo de nuevo y completa ambos campos; la URL base y el timeout son opcionales.",
+        "section.faq_seguridad": "Preguntas frecuentes y notas de seguridad",
+        "faq.q1": "¿El agente puede lanzar, pausar o eliminar escaneos?",
+        "faq.a1": "No. La librería del conector es de solo lectura: solo expone list_vulnerabilities_by_asset, get_scan y export_scan_results. No existe ninguna operación para crear, modificar, lanzar, pausar ni eliminar escaneos, aunque el usuario de las API Keys tuviera permisos para ello.",
+        "faq.q2": "¿Dónde queda guardado el Secret Key?",
+        "faq.a2": "Como secreto en el almacén de credenciales de la plataforma, asociado a tu usuario. La interfaz nunca vuelve a mostrarlo; solo indica \"definido\". Para cambiarlo, escribe uno nuevo en el formulario; para conservarlo al editar otros campos, deja el campo vacío.",
+        "faq.q3": "Rotación de credenciales",
+        "faq.a3": "Recomendado cada 90 días o según tu política: genera un par nuevo de API Keys en Settings → My Account → API Keys, actualízalo en el formulario del conector, pulsa Probar conexión y luego revoca el par anterior desde Tenable.",
+        "faq.q4": "¿Qué hago si las API Keys se comprometen?",
+        "faq.a4.li1": "Revoca el par de API Keys de inmediato en Tenable.io: Settings → My Account → API Keys → Revoke.",
+        "faq.a4.li2": "Revisa los logs de auditoría de la cuenta Tenable para detectar actividad reciente asociada a ese usuario.",
+        "faq.a4.li3": "Genera un par nuevo y actualízalo en el formulario del conector.",
+        "faq.q5": "¿Expiran las API Keys?",
+        "faq.a5": "Por defecto no (las API Keys de Tenable no caducan solas). Si tu política exige expiración o rotación forzosa, gestiona un calendario de rotación manual como el descrito arriba.",
+        "faq.bp.title": "Buenas prácticas",
+        "faq.bp.body": "Usa siempre un par de API Keys dedicado y de solo lectura (rol Basic o Standard, nunca Administrator); restringe la visibilidad con Access Groups al mínimo necesario; y evita compartir el Secret Key por canales no seguros.",
+      },
+      en: {
+        doc_title: "Tenable / Nessus Connector — Ruvic",
+        toc_title: "Contents",
+        "toc.que_es": "What it is and what it’s for",
+        "toc.prerrequisitos": "Prerequisites",
+        "toc.configuracion_fabricante": "Vendor / provider setup",
+        "toc.permisos": "Required permissions",
+        "toc.configuracion_ruvic": "Configuration in Ruvic",
+        "toc.verificacion": "Verification",
+        "toc.solucion_problemas": "Troubleshooting",
+        "toc.faq_seguridad": "FAQ and security notes",
+        guide_title: "Tenable / Nessus",
+        "section.que_es": "What it is and what it’s for",
+        "que_es.body": "The Tenable / Nessus connector lets the Ruvic agent query, in read-only mode, the vulnerabilities detected by Tenable.io (Vulnerability Management). Once configured, you can ask the agent things like:",
+        "que_es.ej1": "\"List the vulnerabilities detected on asset a1b2c3d4-5678-90ab-cdef-1234567890ab.\"",
+        "que_es.ej2": "\"What's the status of scan 123? Give me a summary.\"",
+        "que_es.ej3": "\"Export the results of scan 123 as CSV.\"",
+        "que_es.ops": "Supported operations:",
+        "table.operacion": "Operation",
+        "table.que_hace": "What it does",
+        "ops.list": "Lists the vulnerabilities detected on an asset (aggregates findings from all recent scans covering that asset)",
+        "ops.get_scan": "Queries a scan's status and summary (targets, start/end, hosts)",
+        "ops.export": "Exports and downloads the results of a completed scan (csv, nessus, html or pdf)",
+        "que_es.callout.title": "Read-only by design",
+        "que_es.callout.body": "The connector never launches, pauses, cancels or deletes scans, and never modifies account settings. It only queries data that already exists and exports existing results.",
+        "section.prerrequisitos": "Prerequisites",
+        "prer.cuenta": "A Tenable.io account (cloud Vulnerability Management) or a self-hosted instance compatible with the Tenable API.",
+        "prer.admin": "Access to Settings → My Account → API Keys in Tenable.io to generate an API Key pair, only during initial setup.",
+        "prer.datos": "At least one existing asset or scan in the account to test the query (a real asset_id or scan_id).",
+        "section.configuracion_fabricante": "Vendor / provider setup",
+        "fab.intro": "You will generate a dedicated API Key pair for Ruvic, tied to a read-only user. Do not reuse the API Keys from your administrator account or from another integration.",
+        "fab.p1.t": "Create (or use) a read-only user.",
+        "fab.p1.b": "In Tenable.io, go to Settings → Access Control → Users and create a user with the Basic or Standard role (not Administrator). If you need to limit which assets/scans it can see, assign the relevant Access Groups.",
+        "fab.p2.t": "Generate the API Key pair.",
+        "fab.p2.b": "While signed in as that user (or as an administrator, on that account), go to Settings → My Account → API Keys and click Generate. Tenable shows the Access Key and Secret Key only once — copy them immediately, you'll use them in the Ruvic form.",
+        "fab.p2.note.title": "Important",
+        "fab.p2.note.body": "The Secret Key cannot be retrieved again. If you lose it, you'll need to regenerate the full pair (which invalidates the previous one).",
+        "fab.p2.img": "[ Screenshot: API Key generation in Settings → My Account → API Keys — replace with assets/img/tenable-api-keys.png ]",
+        "fab.p3.t": "(Optional) Restrict visibility with Access Groups.",
+        "fab.p3.b": "If you want the connector to see only certain assets or scans, in Settings → Access Control → Access Groups create a group with the relevant assets and assign it to the user from step 1.",
+        "fab.p4.t": "Verify the credentials from the command line.",
+        "fab.p4.b": "With curl, confirming the session responds:",
+        "fab.p4.result": "If it returns a session JSON (no authentication error), the vendor side is ready. Write down these values for the next section: Access Key and Secret Key.",
+        "section.permisos": "Required permissions",
+        "perm.intro": "Least-privilege principle: the user owning the API Keys only needs a read-only role. Do not grant the Administrator role or permissions to create, modify, launch or delete scans.",
+        "table.permiso": "Permission",
+        "table.para_que": "Why it's needed",
+        "perm.basic.title": "Basic or Standard user role",
+        "perm.basic.body": "Allows authenticating to the API and querying the session, assets and scans visible to that user (security.list_vulnerabilities_by_asset, security.get_scan, security.export_scan_results)",
+        "perm.groups.title": "Access to the relevant Access Groups",
+        "perm.groups.body": "Limits which assets and scans the connector can see, without needing a broader role",
+        "perm.note": "The Administrator role and write permissions are not required: the connector never creates, modifies, launches or deletes scans.",
+        "section.configuracion_ruvic": "Configuration in Ruvic",
+        "ruvic.intro": "Go to Settings → Connectors, find the Tenable / Nessus card and click Configure. Fill in the form with the values from the previous section:",
+        "table.campo": "Form field",
+        "table.valor": "Value",
+        "ruvic.f.base_url": "Base URL",
+        "ruvic.v.base_url": "Optional; defaults to https://cloud.tenable.com. Use your instance's URL if self-hosted",
+        "ruvic.f.access_key": "Access Key",
+        "ruvic.v.access_key": "The Access Key generated in step 2 of section 3",
+        "ruvic.f.secret_key": "Secret Key",
+        "ruvic.v.secret_key": "The Secret Key from the same pair. Stored encrypted as a secret: the UI will never display it again",
+        "ruvic.f.timeout": "Connection timeout",
+        "ruvic.v.timeout": "Optional; defaults to 15 seconds",
+        "ruvic.save": "Save and click Test connection — the platform will query the current Tenable session and confirm the credentials work.",
+        "ruvic.img": "[ Screenshot: Tenable / Nessus connector form in Settings → Connectors — replace with assets/img/tenable-form.png ]",
+        "section.verificacion": "Verification",
+        "ver.p1.t": "Successful connection test.",
+        "ver.p1.b": "The Test connection button should return: \"Successful connection to Tenable (https://cloud.tenable.com)\". The connector card switches to Configured.",
+        "ver.p2.t": "Minimal test automation.",
+        "ver.p2.b": "Open a new conversation with the agent and ask: \"List the vulnerabilities detected on asset <asset_id>.\" (use a real asset_id from your account). The agent should reply with the actual vulnerability list (plugin, severity, count). If it does, the connector is fully operational.",
+        "section.solucion_problemas": "Troubleshooting",
+        "table.sintoma": "Message / symptom",
+        "table.causa": "Likely cause and fix",
+        "prob.s1": "\"Authentication failed: Invalid credentials or insufficient permission for this operation.\"",
+        "prob.c1": "The Access Key or Secret Key was copied incorrectly, or the pair was revoked. Redo step 2 of section 3, generate a new pair if needed, and re-save the form.",
+        "prob.s2": "\"Network error: Could not reach Tenable at '...'\"",
+        "prob.c2": "Timeout or network issue reaching Tenable. Check that the base URL is correct (no path or trailing slash), that no firewall is blocking egress, and consider increasing the connection timeout.",
+        "prob.s3": "\"The requested asset/scan does not exist.\"",
+        "prob.c3": "asset_id or scan_id mistyped, or the API Key user lacks visibility into that asset/scan via its Access Groups. Check the identifier and the access groups from step 3 of section 3.",
+        "prob.s4": "The scan export never finishes (\"did not finish in 60s\")",
+        "prob.c4": "Tenable can take a while to prepare large export files; the connector waits up to 60 seconds. Retry later or export a scan with fewer findings. First verify with get_scan that the status is completed.",
+        "prob.s5": "Connector shows \"Not configured\" after saving",
+        "prob.c5": "The Access Key or Secret Key is missing (both are required). Open it again and fill in both fields; the base URL and timeout are optional.",
+        "section.faq_seguridad": "FAQ and security notes",
+        "faq.q1": "Can the agent launch, pause or delete scans?",
+        "faq.a1": "No. The connector's library is read-only: it only exposes list_vulnerabilities_by_asset, get_scan and export_scan_results. There is no operation to create, modify, launch, pause or delete scans, even if the API Key user had permission to do so.",
+        "faq.q2": "Where is the Secret Key stored?",
+        "faq.a2": "As a secret in the platform's credential store, tied to your user. The UI never displays it again; it only shows \"set\". To change it, type a new one in the form; to keep it while editing other fields, leave the field empty.",
+        "faq.q3": "Credential rotation",
+        "faq.a3": "Recommended every 90 days or per your policy: generate a new API Key pair in Settings → My Account → API Keys, update it in the connector form, click Test connection, then revoke the previous pair from Tenable.",
+        "faq.q4": "What if the API Keys are compromised?",
+        "faq.a4.li1": "Revoke the API Key pair immediately in Tenable.io: Settings → My Account → API Keys → Revoke.",
+        "faq.a4.li2": "Review the Tenable account's audit logs for recent activity from that user.",
+        "faq.a4.li3": "Generate a new pair and update it in the connector form.",
+        "faq.q5": "Do the API Keys expire?",
+        "faq.a5": "By default no (Tenable API Keys don't expire on their own). If your policy requires expiration or forced rotation, manage a manual rotation schedule as described above.",
+        "faq.bp.title": "Best practices",
+        "faq.bp.body": "Always use a dedicated, read-only API Key pair (Basic or Standard role, never Administrator); restrict visibility with Access Groups to the minimum needed; and never share the Secret Key over insecure channels.",
+      },
+    };
+    /* El portal aplica el idioma del usuario (localStorage ruvic-docs-lang)
+       y actualiza [data-i18n], [data-i18n-placeholder] y [data-i18n-alt]. */
+  </script>
+</body>
+</html>
