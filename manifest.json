@@ -1,0 +1,61 @@
+{
+  "id": "tenable",
+  "name": "Tenable / Nessus",
+  "name_en": "Tenable / Nessus",
+  "version": "1.0.0",
+  "description": "Consulta de solo lectura de vulnerabilidades detectadas en Tenable.io: listar vulnerabilidades por activo, consultar un escaneo y exportar sus resultados",
+  "description_en": "Read-only querying of vulnerabilities detected in Tenable.io: list vulnerabilities by asset, check a scan and export its results",
+  "icon": "icon.svg",
+  "category": "security",
+  "category_en": "security",
+  "keywords": ["tenable", "nessus", "vulnerabilidades", "vulnerabilities", "ciberseguridad", "cybersecurity", "escaneo", "scan"],
+  "library": {
+    "package": "ruvic-tenable-connector",
+    "install": "pip install git+https://github.com/Dgirto/Tenable-Nessus.git#subdirectory=lib",
+    "import_name": "ruvic_tenable_connector"
+  },
+  "auth_modes": [
+    {
+      "id": "api_key",
+      "label": "API Keys",
+      "fields": [
+        {
+          "key": "base_url",
+          "label": "URL base",
+          "type": "text",
+          "required": false,
+          "default": "https://cloud.tenable.com",
+          "help_text": "Usa la URL por defecto para Tenable.io en la nube, o la de tu instancia si es autoalojada"
+        },
+        {
+          "key": "access_key",
+          "label": "Access Key",
+          "type": "text",
+          "required": true,
+          "help_text": "Genera un par de API Keys dedicado en Settings → My Account → API Keys"
+        },
+        {
+          "key": "secret_key",
+          "label": "Secret Key",
+          "type": "password",
+          "secret": true,
+          "required": true
+        },
+        {
+          "key": "connect_timeout",
+          "label": "Timeout de conexión (segundos)",
+          "type": "number",
+          "required": false,
+          "default": "15"
+        }
+      ]
+    }
+  ],
+  "env_prefix": "RUVIC_TENABLE_",
+  "operations": ["security.list_vulnerabilities_by_asset", "security.get_scan", "security.export_scan_results"],
+  "test_connection": true,
+  "docs": {
+    "skill": "SKILL.md",
+    "permissions_note": "El usuario dueño de las API Keys necesita al menos el rol 'Basic' o 'Standard' con acceso de solo lectura a los escaneos/activos relevantes. No se requiere el rol Administrator ni permisos para crear/modificar/eliminar escaneos."
+  }
+}
