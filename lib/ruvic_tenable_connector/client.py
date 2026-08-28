@@ -24,6 +24,12 @@ _EXPORT_POLL_INTERVAL = 2
 _EXPORT_MAX_WAIT = 60
 
 
+def _require_str(value: Any, field: str) -> str:
+    if not isinstance(value, str):
+        raise TenableDataError(f"{field} debe ser un string, no {type(value).__name__}.")
+    return value
+
+
 class TenableClient:
     """Cliente de consulta de solo lectura sobre Tenable.io.
 
@@ -108,7 +114,7 @@ class TenableClient:
             >>> client.list_vulnerabilities_by_asset("a1b2c3d4-...")
             [{'plugin_id': 12345, 'plugin_name': 'OpenSSL...', 'severity': 'high', 'count': 1}]
         """
-        asset_id = (asset_id or "").strip()
+        asset_id = _require_str(asset_id, "asset_id").strip()
         if not asset_id:
             raise TenableDataError("asset_id no puede estar vacío.")
         response = self._request("GET", f"/workbenches/asset/{asset_id}/vulnerabilities")
@@ -158,7 +164,7 @@ class TenableClient:
             >>> content = client.export_scan_results(123, "csv")
             >>> open("resultados.csv", "wb").write(content)
         """
-        if export_format not in {"csv", "nessus", "html", "pdf"}:
+        if not isinstance(export_format, str) or export_format not in {"csv", "nessus", "html", "pdf"}:
             raise TenableDataError(
                 f"export_format {export_format!r} inválido. Usa csv, nessus, html o pdf."
             )
